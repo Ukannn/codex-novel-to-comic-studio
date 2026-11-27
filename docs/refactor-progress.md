@@ -9,6 +9,11 @@
 - Execution: isolated Git worktrees; independent rendering and validation owners;
   separate read-only architecture reviewer.
 - Compatibility policy: [architecture](architecture.md) and [decisions](architecture-decisions.md).
+- Commit references below identify the original reviewed worktree history.
+  Publication through the connected GitHub API assigns new commit metadata;
+  each published batch includes an `Original-Commit` trailer. Every published
+  tree was checked for exact equality with its corresponding local tree.
+  The original history remains on `refactor/architecture-governance-local-20261128`.
 
 ## Completed checkpoints
 

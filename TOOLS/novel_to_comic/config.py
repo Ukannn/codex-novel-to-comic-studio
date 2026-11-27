@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from .artifacts import read_json
 
 
 SUPPORTED_FORMATS = ["txt", "epub"]
@@ -19,10 +20,7 @@ FINISHED_PAGE_TEXT_MODES = {"image2_embedded", "deterministic_lettering_fallback
 
 
 def load_preferences(path: str | Path) -> dict[str, Any]:
-    config_path = Path(path)
-    with config_path.open("r", encoding="utf-8") as handle:
-        data = json.load(handle)
-    return data
+    return read_json(path)
 
 
 def validate_preferences(preferences: dict[str, Any]) -> list[str]:

@@ -5,10 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
-import json
 import re
 import zipfile
 import xml.etree.ElementTree as ET
+
+from .artifacts import write_json
 
 
 CHAPTER_HEADING_RE = re.compile(
@@ -165,7 +166,7 @@ def write_parsed_source(parsed: ParsedSource, output_dir: str | Path) -> None:
             for chapter in parsed.chapters
         ],
     }
-    (target / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json(target / "manifest.json", manifest)
 
     for chapter in parsed.chapters:
         chapter_content = f"{chapter.title}\n\n{chapter.text.strip()}\n"

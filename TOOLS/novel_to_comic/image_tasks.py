@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from .artifacts import read_json, write_json
 
 
 def build_image_tasks(storyboard_path: str | Path, visual_bible_dir: str | Path, chapter_id: str) -> list[dict[str, Any]]:
     storyboard_file = Path(storyboard_path)
     visual_root = Path(visual_bible_dir)
-    storyboard = json.loads(storyboard_file.read_text(encoding="utf-8"))
+    storyboard = read_json(storyboard_file)
     tasks: list[dict[str, Any]] = []
 
     for page in storyboard.get("pages", []):
@@ -37,9 +38,7 @@ def build_image_tasks(storyboard_path: str | Path, visual_bible_dir: str | Path,
 
 
 def write_image_tasks(tasks: list[dict[str, Any]], output_path: str | Path) -> None:
-    target = Path(output_path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(tasks, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json(output_path, tasks)
 
 
 def _references_for_page(panels: list[dict[str, Any]], visual_root: Path) -> list[dict[str, str]]:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run basic QC for a chapter's page art and finished pages."""
+"""Run basic QC for finished pages, optionally including fallback page art."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from novel_to_comic.qc import qc_chapter
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create a chapter QC report.")
     parser.add_argument("storyboard", help="Path to chapters/chNN/storyboard.json")
-    parser.add_argument("--page-art", required=True, help="Page art directory")
+    parser.add_argument("--page-art", help="Also check this fallback page-art directory when supplied")
     parser.add_argument("--finished-pages", required=True, help="Finished pages directory")
     parser.add_argument("--out", required=True, help="QC report path")
     parser.add_argument("--width", type=int, default=2480)
@@ -22,7 +22,7 @@ def main() -> int:
 
     report = qc_chapter(
         Path(args.storyboard),
-        Path(args.page_art),
+        Path(args.page_art) if args.page_art else None,
         Path(args.finished_pages),
         Path(args.out),
         expected_size=(args.width, args.height),

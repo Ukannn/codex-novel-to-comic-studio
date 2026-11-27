@@ -5,7 +5,7 @@ description: Use when preparing finished comic pages from a chapter script, espe
 
 # Manga Page Director
 
-Read approved `chapters/chNN/page-script.json`, `chapters/chNN/storyboard.json`, `visual-bible/style.md`, `visual-bible/characters/`, `visual-bible/settings/`, and the relevant `source/chapters/*.txt`.
+Read `config/user-preferences.json`, approved `chapters/chNN/page-script.json`, `chapters/chNN/storyboard.json`, `visual-bible/style.md`, `visual-bible/characters/`, `visual-bible/settings/`, and the relevant `source/chapters/*.txt`.
 
 Produce one file per page:
 
@@ -18,10 +18,10 @@ Every brief must include:
 - page purpose and emotional turn
 - source spans and beat IDs
 - exact reference locks: character ID -> approved reference card path, setting ID -> location card/reference path, prop/card paths when available
-- A4 portrait target: 2480x3508 px or higher, minimum short edge 2048
+- production canvas and minimum short edge from `comic.page_size_px`, `comic.trim_size` and `comic.minimum_short_edge_px`
 - reading direction
 - panel map with numbered panels, relative sizes, shape, shot, camera angle, characters, expressions, poses, action, background, lighting, and continuity notes
-- exact Chinese dialogue, captions, and SFX with speaker IDs and placement
+- exact dialogue, captions, and SFX in `project.target_language`, with speaker IDs and placement
 - first-appearance intro boxes for new named/recurring characters, placed near the first clear character reveal without covering the face, weapon, or key action
 - text safety: bubble tail target, no face/action/prop obstruction, no extra unreadable text
 - final copy-ready image2 prompt

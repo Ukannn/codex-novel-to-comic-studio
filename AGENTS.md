@@ -2,6 +2,21 @@
 
 你是这个目录里的漫画化项目总编辑。目标是按 `SKILL.md` 的 v0 流程，把 `source/` 里的小说改编成可审阅、可恢复、最终可导出 PDF + CBZ 的漫画项目。
 
+## 修改工程代码时
+
+工程维护先读 `docs/architecture.md`、`docs/architecture-decisions.md` 和
+`docs/refactor-backlog.md`。下面的素材、样张和角色审批关口适用于漫画生产；
+仅修改工具代码、文档或用临时合成数据测试时，不创建或改动这些审批标记。
+
+- 在独立 worktree 中开发，每批完整迁移独立提交；保留原有 CLI、JSON、路径和阶段名。
+- 并行 Agent 先明确文件所有权与共享接口，一人维护集成分支；同一文件不并发编辑。
+- 业务能力放在 `TOOLS/novel_to_comic/` 的所属模块，CLI 只负责参数、调用、输出和退出码。
+- 默认值和配置规则归 `config.py`；生产命令显式传 `--preferences config/user-preferences.json`。
+- JSON 持久化用 `artifacts.read_json` / `write_json`；校验用领域模块，布局用 `layout.panel_boxes`。
+- 引入标准实现时迁完旧调用方、删掉被替代代码，并用测试锁住既有有效输入行为。
+- 执行 `python3 -m unittest discover -s tests -v` 和 `git diff --check`；核心依赖不得成环或反向引用 CLI。
+- 每批更新 `docs/refactor-progress.md` 和任务池，重大行为变更记录到决策文件。
+
 ## 启动检查
 
 先运行：
@@ -18,6 +33,7 @@ python3 TOOLS/check_state.py .
 
 - `project.mode` 决定这个项目是私用测试、授权商业还是公版/可发布来源
 - `project.automation_level` 决定交付深度；当前试跑是 Level 3 的单章半手动成品流程
+- `project.target_language` 决定对白、旁白和 SFX 的目标语言；不要固定为中文
 - `input.supported_formats` 目前只支持 `txt` 和 `epub`
 - `visuals.style_family` 是默认画风方向
 - `comic.page_count_policy` 默认是 `story_first_variable`：先把故事讲好，再决定页数
@@ -55,7 +71,7 @@ python3 TOOLS/check_state.py .
 
 漫画剧情拆解完成后先运行 `python3 TOOLS/check_page_story_plan.py chapters/chNN/page-story-plan.json`。检查不通过时，不允许创建 `PAGE_STORY_PLAN_APPROVED`，也不允许进入分镜、导演稿或 image2 成品页。
 
-剧情拆解通过后，必须先写漫画脚本/台词稿 `chapters/chNN/page-script.json` 和 `.md`。这里负责“剧情和信息怎么传给读者”：必传信息清单、读者已知/新知/疑问、每格对白/旁白/SFX、原文保留或改写句、不可省略因果。不要按固定字数配额写，剧情清楚优先。image2 足够强时可以承担成品页中文文字，不要为了担心文字渲染而删掉必要剧情。
+剧情拆解通过后，必须先写漫画脚本/台词稿 `chapters/chNN/page-script.json` 和 `.md`。这里负责“剧情和信息怎么传给读者”：必传信息清单、读者已知/新知/疑问、每格对白/旁白/SFX、原文保留或改写句、不可省略因果。不要按固定字数配额写，剧情清楚优先。image2 足够强时可以承担成品页目标语言文字，不要为了担心文字渲染而删掉必要剧情。
 
 漫画脚本完成后运行 `python3 TOOLS/check_page_script.py chapters/chNN/page-script.json`。检查不通过时，不允许创建 `PAGE_SCRIPT_APPROVED`，也不允许进入 storyboard、导演稿或 image2 成品页。
 

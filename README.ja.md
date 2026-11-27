@@ -27,7 +27,7 @@ Demo PDF: [demo-original-one-page.pdf](docs/assets/demo-original-one-page.pdf)
 ## Quick Start
 
 ```bash
-git clone https://github.com/lhfer/codex-novel-to-comic-studio.git
+git clone https://github.com/Ukannn/codex-novel-to-comic-studio.git
 cd codex-novel-to-comic-studio
 python3 TOOLS/check_state.py .
 python3 TOOLS/parse_source.py source/my-book.epub --out source
@@ -35,3 +35,16 @@ python3 TOOLS/check_state.py .
 ```
 
 Codex should continue from `next_phase` and preserve existing artifacts.
+
+## 設定と開発
+
+制作時のサイズと言語は `config/user-preferences.json` で指定します。
+画像タスク、合成、正規化、文字入れ、QC には
+`--preferences config/user-preferences.json` を明示的に渡してください。
+コマンドの幅・高さ・間隔の指定が設定ファイルより優先されます。
+設定を渡さない既存コマンドは従来の既定値を維持します。
+
+通常の QC は `--finished-pages` を使い、別レイヤーの原画も検査する場合だけ
+`--page-art` を追加します。開発時は
+`python3 -m unittest discover -s tests -v` を実行し、
+[architecture](docs/architecture.md) と [task pool](docs/refactor-backlog.md) を確認してください。

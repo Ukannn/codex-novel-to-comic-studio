@@ -27,7 +27,7 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/lhfer/codex-novel-to-comic-studio.git
+git clone https://github.com/Ukannn/codex-novel-to-comic-studio.git
 cd codex-novel-to-comic-studio
 python3 TOOLS/check_state.py .
 python3 TOOLS/parse_source.py source/my-book.epub --out source
@@ -35,6 +35,26 @@ python3 TOOLS/check_state.py .
 ```
 
 然后让 Codex 根据 `next_phase` 继续推进，不要覆盖已有阶段产物。
+
+## 配置与工程维护
+
+`config/user-preferences.json` 决定项目的页面尺寸、最低分辨率、裁切规格和目标语言。
+生成任务、拼页、规范化、排字和 QC 时显式传入 `--preferences config/user-preferences.json`。
+命令行明确指定的宽高或格距优先；未传配置文件的旧命令保留原有默认行为。
+
+```bash
+python3 TOOLS/make_image_tasks.py chapters/ch01/storyboard.json --chapter ch01 --preferences config/user-preferences.json
+python3 TOOLS/qc_chapter.py chapters/ch01/storyboard.json --finished-pages chapters/ch01/finished-pages --out chapters/ch01/qc-report.json --preferences config/user-preferences.json
+python3 -m unittest discover -s tests -v
+```
+
+正常的整页生成只需检查 `finished-pages`；检查备用无字底图时再传 `--page-art`。
+自动 QC 检查文件和图像，故事、文字和人物一致性仍需按角色规范审阅。
+
+开发环境为 Python 3.10+ 和 `requirements.txt` 中的依赖。开始修改前阅读
+[架构与模块所有权](docs/architecture.md)、[架构决策](docs/architecture-decisions.md)、
+[治理进度](docs/refactor-progress.md)和[任务池](docs/refactor-backlog.md)。
+并行开发使用独立 worktree，先确定文件所有权；CI 自动检查模块依赖、公开接口和行为契约。
 
 ## 关键原则
 

@@ -49,7 +49,7 @@ AI image models can now draw richly detailed comic pages, but good comics are no
 Clone the repository:
 
 ```bash
-git clone https://github.com/lhfer/codex-novel-to-comic-studio.git
+git clone https://github.com/Ukannn/codex-novel-to-comic-studio.git
 cd codex-novel-to-comic-studio
 ```
 

@@ -140,6 +140,10 @@ def source_violations(source, module, *, cli=False):
             problems.append(f"{module}: dynamic imports hide dependency edges")
         if not cli and is_process_function(name):
             problems.append(f"{module}: process execution is outside the core")
+        if isinstance(node.func, ast.Attribute) and node.func.attr in {"write_text", "write_bytes"}:
+            canonical = name in {"artifacts.write_text", "novel_to_comic.artifacts.write_text"}
+            if module != "artifacts" and not canonical:
+                problems.append(f"{module}: text persistence belongs to artifacts")
         if name in {"json.load", "json.loads", "json.dump", "json.dumps", "json.JSONDecoder", "json.JSONEncoder"}:
             if module == "artifacts" and not cli:
                 continue
@@ -266,6 +270,9 @@ class ArchitectureGuardTests(unittest.TestCase):
         self.assertEqual(source_violations("import json; print(json.dumps({}))", "command", cli=True), [])
         self.assertEqual(source_violations("import json; error = json.JSONDecodeError", "validation"), [])
         self.assertEqual(source_violations("import json; json.loads('{}')", "artifacts"), [])
+        self.assertTrue(any("text persistence" in issue for issue in source_violations("target.write_text('partial')", "source")))
+        self.assertTrue(any("text persistence" in issue for issue in source_violations("target.write_bytes(b'partial')", "source")))
+        self.assertEqual(source_violations("from novel_to_comic import artifacts; artifacts.write_text(path, 'complete')", "source"), [])
 
     def test_authoritative_defaults_and_retired_helpers_are_enforced(self):
         for source, expected in (

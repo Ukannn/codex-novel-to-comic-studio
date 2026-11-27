@@ -31,10 +31,15 @@ change. User novels, reference art and outputs remain untracked.
 | PDF / CBZ | `bind` | Delivery; both formats are required by the current workflow |
 
 The filesystem is the sole persistent state store. No in-memory registry or
-cache should duplicate artifact truth. JSON writes use one persistence boundary;
+cache should duplicate artifact truth. Text/JSON writes use one atomic persistence boundary;
 this does not make a multi-file chapter transaction atomic. One Agent owns each
 shared artifact. Artists may write different page ranges only after shared
 script/storyboard/director inputs are approved.
+
+For a fresh source ingest, publish chapter text first, the manifest next, and
+`source/novel.txt` last. That last path is the existing state-completion signal.
+An interrupted first ingest must remain at `phase0_ingest`. Re-ingestion of an
+existing version is not a multi-file transaction and does not delete old chapters.
 
 ## Module boundaries
 
@@ -46,6 +51,7 @@ validation or image algorithms. Existing importable validator names are retained
 flowchart TD
     C["CLI adapters"] --> S["Production services"]
     C --> P["Preference resolution"]
+    S --> P
     S --> V["Document validation"]
     S --> G["Pure panel geometry"]
     S --> I["Artifact I/O"]
@@ -59,6 +65,28 @@ CLI argument parsing, process runners or production services. State interprets
 artifacts and validators; it never generates pages or changes approvals. Pillow
 belongs only in image operations, QC and binding. No package import cycles are
 permitted. The implemented edge list is checked by the architecture tests.
+
+| Module | Public entry points | Allowed internal dependencies |
+| --- | --- | --- |
+| `artifacts` | `read_json`, `write_json`, `write_text` | None |
+| `config` | `load_preferences`, `validate_preferences`, `ProductionSettings`, `load_production_settings` | `artifacts` |
+| `source` | `parse_txt`, `parse_epub`, `parse_source_file`, `write_parsed_source` | `artifacts` |
+| `validation` | Shared diagnostic/file/page-list mechanics | `artifacts` |
+| `page_story_plan` | `check_page_story_plan`, `validate_page_story_plan` | `validation` |
+| `page_script` | `check_page_script`, `validate_page_script` | `validation` |
+| `director_briefs` | `check_briefs`, `validate_director_brief` | `validation` |
+| `state` | `detect_state` | Plan/script validators, `validation` |
+| `image_tasks` | `build_image_tasks`, `write_image_tasks` | `artifacts`, `config` |
+| `layout` | `panel_boxes` | None |
+| `compose` | `compose_chapter_pages` | `artifacts`, `config`, `layout` |
+| `lettering` | `normalize_page_image`, `normalize_directory`, `letter_chapter_pages` | `artifacts`, `config`, `layout` |
+| `qc` | `qc_chapter` | `artifacts`, `config` |
+| `bind` | `bind_pages` | None |
+
+This table explains ownership; `tests/test_architecture.py` is the executable
+authority for allowed edges. Its static checks do not prove semantic correctness
+or detect every possible renamed copy of an algorithm; independent review remains
+part of each batch.
 
 ## Public compatibility surface
 
@@ -82,11 +110,11 @@ not silently reinterpreted as approval of artifact contents.
 | Domain models | Plan/script helpers repeated; distinct domain semantics | Share diagnostic mechanics, retain separate validators |
 | Interfaces and data | Director rules in CLI; file and memory validation coupled | Package-owned pure validation plus stable file adapters |
 | State and data flow | Three identical page-number readers; repeated reads | One validated script snapshot, no unused readers |
-| Data access and cache | JSON writes copied and vulnerable to partial writes | Atomic UTF-8 JSON boundary; no new cache |
+| Data access and cache | JSON writes copied; source completion published too early | Atomic UTF-8 text/JSON boundary; novel signal published last |
 | Configuration | Preferences unused by production; language hardcoded Chinese | Explicit preference input; legacy defaults retained |
 | Errors and retries | Decode/file/image errors inconsistently surfaced | Expected failures at owning boundary; no speculative retries |
 | Observability | JSON stdout and workflow log directories | Preserve machine-readable output; no logging framework |
-| Permissions and identity | Local OS/Git access, sensitive output ignore rules | Preserve; no new authentication layer |
+| Permissions and identity | Local OS/Git access; generated narrative plans not ignored | Preserve access model; complete runtime-artifact ignore coverage |
 | Naming and boundaries | Compact package; no cycles; incomplete `__all__` | Keep layout, document APIs and enforce dependency direction |
 | Utilities | Duplicate grid algorithm with different margins | One parameterized geometry function, preserve both policies |
 | Tests and build | 11 cases, no CI or architectural checks | Characterization, contract tests, AST rules and CI |

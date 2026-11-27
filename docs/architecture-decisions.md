@@ -35,15 +35,16 @@ not a second implementation of validation rules. The project currently selects
 English, while standalone image tasks historically requested Chinese. Explicit
 configuration fixes that mismatch without silently changing old invocations.
 
-## ADR-004 — Atomic JSON files, not a transaction framework (accepted)
+## ADR-004 — Atomic text/JSON files, not a transaction framework (accepted)
 
 Options: keep ad hoc writes; add a database/journal; or centralize UTF-8 JSON reads
-and atomic same-directory file replacement. Choose the last. Serialization
+and atomic same-directory file replacement. Choose the last. `write_json`
+serializes into the one UTF-8 `write_text` publisher. Serialization
 completes before a destination is replaced; failed writes preserve the old file
 and remove the temporary file. File/JSON failures remain ordinary exceptions so
 domain validators can translate them into their established report format.
 
-This protects readers from truncated individual JSON files. It does not promise
+This protects readers from truncated individual text/JSON files. It does not promise
 locking, last-writer conflict resolution, multi-file atomicity or stale approval
 detection. Shared files still have one owner during parallel work.
 
@@ -55,3 +56,31 @@ Turning those checks into strict production approval gates would change recovery
 and completion behavior. Keep phase names and precedence while simplifying reads.
 Track strict QC, content approval and artifact hashes separately for a product
 decision. The current engineering task does not invoke image production gates.
+
+## ADR-006 — Publish the existing ingest completion signal last (accepted)
+
+Fault injection proved that publishing `novel.txt` before chapter writes lets
+state advance after an unsuccessful first ingest. Options: add a new completion
+marker and migrate existing projects; introduce a transactional source store; or
+keep the existing contract and publish its completion signal last. Choose the
+last: chapters, then manifest, then `novel.txt`, each through atomic persistence.
+Success bytes/paths remain the same. Existing project re-ingestion remains a
+separate multi-file consistency decision.
+
+## ADR-007 — Primary QC and fallback QC are explicit (accepted)
+
+The documented normal product is an image2 finished page, but QC required a
+fallback `page-art` directory. Permit `None` in the existing Python argument and
+make the CLI flag optional. Omitting it checks finished pages; explicitly passing
+it preserves both checks. Report fields, severity rules and exit codes remain.
+This adds the documented primary path without deleting fallback capability.
+
+## ADR-008 — Enforce proven boundaries with the existing test runner (accepted)
+
+Options: add a linter/plugin framework, rely only on documentation, or implement
+small AST constraints in the unittest suite. Choose the third for this Python
+toolkit. Check module inventory, allowed edges, cycles, core/CLI direction,
+Pillow ownership, canonical persistence/defaults and retired duplicated helpers.
+Exercise negative fixtures so a rule must reject its intended violations.
+Keep business contract tests and independent review: syntactic rules are not a
+proof of arbitrary business logic or every possible semantic duplication.

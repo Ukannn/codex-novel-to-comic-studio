@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from PIL import Image, ImageDraw
+
+from .layout import panel_boxes
 
 
 DEFAULT_PAGE_SIZE = (2480, 3508)
@@ -33,7 +34,7 @@ def compose_chapter_pages(
     for page in storyboard.get("pages", []):
         page_number = int(page["page"])
         canvas = Image.new("RGB", page_size, "white")
-        boxes = _layout_boxes(page.get("layout", "2x2"), page_size, gutter, len(page.get("panels", [])))
+        boxes = panel_boxes(page.get("layout", "2x2"), page_size, gutter, len(page.get("panels", [])))
         for panel, box in zip(page.get("panels", []), boxes, strict=False):
             panel_number = int(panel["panel"])
             panel_image = _load_panel_image(finals / f"p{page_number:03d}-{panel_number:02d}.png", box)
@@ -43,29 +44,6 @@ def compose_chapter_pages(
         page_paths.append(page_path)
 
     return page_paths
-
-
-def _layout_boxes(layout: str, page_size: tuple[int, int], gutter: int, panel_count: int) -> list[tuple[int, int, int, int]]:
-    width, height = page_size
-    if layout == "splash":
-        return [(0, 0, width, height)]
-    if layout == "3x2":
-        rows, cols = 3, 2
-    elif layout == "2x2":
-        rows, cols = 2, 2
-    else:
-        cols = 2
-        rows = max(1, (panel_count + 1) // 2)
-
-    cell_width = (width - gutter * (cols - 1)) // cols
-    cell_height = (height - gutter * (rows - 1)) // rows
-    boxes: list[tuple[int, int, int, int]] = []
-    for row in range(rows):
-        for col in range(cols):
-            x0 = col * (cell_width + gutter)
-            y0 = row * (cell_height + gutter)
-            boxes.append((x0, y0, x0 + cell_width, y0 + cell_height))
-    return boxes[:panel_count]
 
 
 def _load_panel_image(path: Path, box: tuple[int, int, int, int]) -> Image.Image:

@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from novel_to_comic.bind import bind_pages
 from novel_to_comic.compose import compose_chapter_pages
 from novel_to_comic.lettering import letter_chapter_pages, normalize_directory, normalize_page_image
+from novel_to_comic.layout import panel_boxes
 
 
 class RenderingContracts(unittest.TestCase):
@@ -67,6 +68,18 @@ class RenderingContracts(unittest.TestCase):
         )
         with Image.open(outputs[0]) as page:
             self.assertEqual(page.getextrema(), ((255, 255), (0, 0), (0, 0)))
+
+    def test_three_by_two_layout_keeps_row_major_reading_order(self):
+        self.assertEqual(panel_boxes("3x2", (40, 80), 4, 6), [
+            (0, 0, 18, 24), (22, 0, 40, 24),
+            (0, 28, 18, 52), (22, 28, 40, 52),
+            (0, 56, 18, 80), (22, 56, 40, 80),
+        ])
+
+    def test_story_led_layout_uses_enough_rows_for_odd_panel_count(self):
+        self.assertEqual(panel_boxes("story-led", (40, 60), 4, 3), [
+            (0, 0, 18, 28), (22, 0, 40, 28), (0, 32, 18, 60),
+        ])
 
     def test_compose_keeps_missing_panel_placeholder(self):
         outputs = compose_chapter_pages(

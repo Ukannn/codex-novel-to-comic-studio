@@ -13,7 +13,7 @@ Responsibilities:
 - add speech bubbles, captions, SFX, and chapter titles outside image generation only in fallback repair mode
 - read fallback page art from `chapters/chNN/page-art/page-001.png` only when separate layers are needed
 - export project-level PDF and CBZ under `output/`
-- preserve A4 portrait output at 2480x3508 px or higher unless the user selects another print size
+- preserve the production canvas selected by `comic.page_size_px` and `comic.trim_size`; pass `--preferences config/user-preferences.json` to normalization and lettering tools
 
 Default flow asks image2 to render the finished readable page from the director brief. If text is wrong, first try a stricter director brief/regeneration; use deterministic lettering only when regeneration is not enough or the user asks for repair.
 

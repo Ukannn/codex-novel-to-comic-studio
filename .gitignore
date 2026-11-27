@@ -11,6 +11,11 @@ source/*
 source/chapters/*
 !source/chapters/.gitkeep
 
+# Narrative analysis and adaptation plans also derive from local source books.
+/story-bible/
+/comic-plan.json
+/comic-plan.md
+
 # Production outputs are usually derivative works. Keep them local by default.
 chapters/*
 !chapters/.gitkeep

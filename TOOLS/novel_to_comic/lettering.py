@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import textwrap
 from pathlib import Path
 from typing import Any, Iterable
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+from .artifacts import read_json
+from .config import DEFAULT_PAGE_SIZE as A4_PAGE_SIZE
+from .layout import panel_boxes
 
-A4_PAGE_SIZE = (2480, 3508)
+
 DEFAULT_FONT_PATHS = [
     "/System/Library/Fonts/STHeiti Medium.ttc",
     "/System/Library/Fonts/Supplemental/Songti.ttc",
@@ -56,7 +58,7 @@ def letter_chapter_pages(
     output_dir: str | Path,
     page_size: tuple[int, int] = A4_PAGE_SIZE,
 ) -> list[Path]:
-    storyboard = json.loads(Path(storyboard_path).read_text(encoding="utf-8"))
+    storyboard = read_json(storyboard_path)
     art_root = Path(page_art_dir)
     target_root = Path(output_dir)
     target_root.mkdir(parents=True, exist_ok=True)
@@ -77,8 +79,8 @@ def letter_chapter_pages(
             canvas = image.convert("RGBA")
         overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        panel_boxes = _layout_boxes(page.get("layout", "2x2"), page_size, 34, len(page.get("panels", [])))
-        for panel, box in zip(page.get("panels", []), panel_boxes, strict=False):
+        boxes = panel_boxes(page.get("layout", "2x2"), page_size, 34, len(page.get("panels", [])), margin=82)
+        for panel, box in zip(page.get("panels", []), boxes, strict=False):
             _draw_panel_lettering(draw, panel, box, text_font, caption_font, sfx_font)
         composed = Image.alpha_composite(canvas, overlay).convert("RGB")
         composed.save(target)
@@ -167,33 +169,6 @@ def _draw_sfx(
         stroke_width=8,
         stroke_fill=(255, 246, 222, 245),
     )
-
-
-def _layout_boxes(layout: str, page_size: tuple[int, int], gutter: int, panel_count: int) -> list[tuple[int, int, int, int]]:
-    width, height = page_size
-    margin = 82
-    content = (margin, margin, width - margin, height - margin)
-    x0, y0, x1, y1 = content
-    content_width = x1 - x0
-    content_height = y1 - y0
-    if layout == "splash":
-        return [content]
-    if layout == "3x2":
-        rows, cols = 3, 2
-    elif layout == "2x2":
-        rows, cols = 2, 2
-    else:
-        cols = 2
-        rows = max(1, (panel_count + 1) // 2)
-    cell_width = (content_width - gutter * (cols - 1)) // cols
-    cell_height = (content_height - gutter * (rows - 1)) // rows
-    boxes: list[tuple[int, int, int, int]] = []
-    for row in range(rows):
-        for col in range(cols):
-            px0 = x0 + col * (cell_width + gutter)
-            py0 = y0 + row * (cell_height + gutter)
-            boxes.append((px0, py0, px0 + cell_width, py0 + cell_height))
-    return boxes[:panel_count]
 
 
 def _anchored_rect(

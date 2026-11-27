@@ -9,7 +9,7 @@ This is a fallback role. The default production role is `manga-page-director`, w
 
 Use this role only when the user chooses separate layers or finished-page image2 output fails text/layout badly enough that a clean no-text art layer is needed.
 
-Read `chapters/chNN/director-briefs/page-NNN-director-brief.md`, `visual-bible/style.md`, `visual-bible/characters/`, and `visual-bible/settings/`.
+Read `config/user-preferences.json`, `chapters/chNN/director-briefs/page-NNN-director-brief.md`, `visual-bible/style.md`, `visual-bible/characters/`, and `visual-bible/settings/`.
 
 For each fallback page, prepare one image2 task that generates the complete no-text page art with multiple panels already arranged.
 
@@ -21,7 +21,7 @@ For each fallback page, prepare one image2 task that generates the complete no-t
 - source span, character version, setting version, and key prop requirements
 - image2 prompt
 - page aspect ratio
-- A4 portrait production target, 2480x3508 px or higher, minimum short edge 2048 px
+- production canvas and minimum short edge from `comic.page_size_px`, `comic.trim_size` and `comic.minimum_short_edge_px`
 - explicit instruction: no text, captions, SFX, signs, subtitles, or speech bubbles inside the fallback image
 
 Use AI's visual advantage. Each page should feel worth pausing on: richer background detail, stronger lighting, more expressive gestures, and clearer magical/action effects than a rushed human production page. Do not let detail destroy readability; preserve clean silhouettes, focal hierarchy, and lettering space.

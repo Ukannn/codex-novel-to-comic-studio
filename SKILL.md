@@ -5,7 +5,7 @@ description: Convert long-form fiction from TXT or EPUB into a recoverable comic
 
 # Novel To Comic
 
-Use this skill to run a conservative v0 pipeline for adapting a novel into a comic. Treat `novel-to-comic-skill-design.md` as product background, not as an exact command list.
+Use this skill to run a conservative v0 pipeline for adapting a novel into a comic.
 
 ## Operating Model
 
@@ -16,6 +16,13 @@ python3 TOOLS/check_state.py .
 ```
 
 Respect `config/user-preferences.json` and `rights/PROJECT_RIGHTS.md`. v0 supports `txt` and `epub` input only. Default comic pages are A4 portrait at 2480x3508 px or higher, with a minimum short edge of 2048 px. Page count is story-first by default: do not force a source chapter into a fixed page budget if the story becomes choppy. The default production path is **page story plan -> manga page script -> storyboard -> director brief -> image2 finished page**: image2 should receive a rigorous whole-page manga director brief and generate one complete readable page with panel layout, balloons, captions, SFX, and page art together. `page-art/` plus deterministic lettering is only a fallback when text rendering fails or the user asks for separate layers.
+
+Use `project.target_language` for all reader-facing text. Use `comic.page_size_px`,
+`comic.minimum_short_edge_px` and `comic.trim_size` for the selected production
+canvas. Pass `--preferences config/user-preferences.json` to image tasks,
+composition, normalization, lettering and QC. Explicit command-line size/gutter
+flags override that file; omitting the file preserves legacy standalone defaults.
+For tool development, follow the engineering section of `AGENTS.md`.
 
 ## Rights And Source Traceability
 
@@ -87,9 +94,9 @@ Every `page-NNN-director-brief.md` must be precise enough for a manga artist/ima
 - **Page purpose**: what the reader must understand or feel after this page.
 - **Source trace**: source chapter, scene, and beat IDs; mark any `adaptation_added`.
 - **Reference lock**: exact character cards, outfit/stage versions, setting cards, prop cards, and style bible paths. Use paths such as `visual-bible/characters/char-001/reference-card.png`.
-- **Page layout**: A4 portrait, reading direction, non-mechanical manga panel arrangement, relative panel sizes, border style, gutters, overlaps, bleed/splash areas, and reading path.
+- **Page layout**: configured production canvas (A4 portrait by default), reading direction, non-mechanical manga panel arrangement, relative panel sizes, border style, gutters, overlaps, bleed/splash areas, and reading path.
 - **Panel directives**: for each panel, specify shape, size, shot, angle, camera distance, characters, expressions, poses, action, background, lighting, and continuity constraints.
-- **Text directives**: exact Chinese dialogue/captions/SFX, speaker IDs, balloon/caption/SFX placement, reading order, font mood, tail target, and “do not cover” areas.
+- **Text directives**: exact dialogue/captions/SFX in `project.target_language`, speaker IDs, balloon/caption/SFX placement, reading order, font mood, tail target, and “do not cover” areas.
 - **Image2 prompt block**: a final copy-ready prompt that includes the reference locks, page layout, all panel directives, exact text, and negative constraints.
 - **QC checklist**: story clarity, panel readability, character consistency, correct text, no wrong extra text, and no face/action obstruction.
 
@@ -126,6 +133,8 @@ python3 TOOLS/parse_source.py path/to/book.epub --out source
 python3 TOOLS/check_page_story_plan.py chapters/ch01/page-story-plan.json
 python3 TOOLS/check_page_script.py chapters/ch01/page-script.json
 python3 TOOLS/check_director_briefs.py chapters/ch01/director-briefs
+python3 TOOLS/make_image_tasks.py chapters/ch01/storyboard.json --chapter ch01 --preferences config/user-preferences.json
+python3 TOOLS/qc_chapter.py chapters/ch01/storyboard.json --finished-pages chapters/ch01/finished-pages --out chapters/ch01/qc-report.json --preferences config/user-preferences.json
 python3 TOOLS/bind.py chapters/ch01/finished-pages --book-slug my-comic
 python3 TOOLS/check_state.py .
 python3 -m unittest discover -s tests -v

@@ -49,7 +49,7 @@ AI image models can now draw richly detailed comic pages, but good comics are no
 Clone the repository:
 
 ```bash
-git clone https://github.com/lhfer/codex-novel-to-comic-studio.git
+git clone https://github.com/Ukannn/codex-novel-to-comic-studio.git
 cd codex-novel-to-comic-studio
 ```
 
@@ -86,9 +86,36 @@ Useful validation and export commands:
 python3 TOOLS/check_page_story_plan.py chapters/ch01/page-story-plan.json
 python3 TOOLS/check_page_script.py chapters/ch01/page-script.json
 python3 TOOLS/check_director_briefs.py chapters/ch01/director-briefs
+python3 TOOLS/make_image_tasks.py chapters/ch01/storyboard.json --chapter ch01 --preferences config/user-preferences.json
+python3 TOOLS/qc_chapter.py chapters/ch01/storyboard.json --finished-pages chapters/ch01/finished-pages --out chapters/ch01/qc-report.json --preferences config/user-preferences.json
 python3 TOOLS/bind.py chapters/ch01/finished-pages --book-slug my-comic
 python3 -m unittest discover -s tests -v
 ```
+
+### Production configuration
+
+`config/user-preferences.json` selects the project's canvas, minimum resolution,
+trim size, target language and panel gutter. Pass it explicitly with
+`--preferences` to `make_image_tasks.py`, `compose.py`, `normalize_pages.py`,
+`letter_chapter.py` and `qc_chapter.py`. Explicit `--width`, `--height` and
+`--gutter` options, where available, override the corresponding setting.
+Without `--preferences`, existing standalone defaults remain unchanged.
+Only fields consumed by a particular tool affect that tool; the complete project
+preferences file is validated before any image/task output is written.
+
+For normal image2 output, QC needs `--finished-pages`; `--page-art` is optional
+and enables additional checks of a separate fallback layer. Passing QC verifies
+the automated file/image checks, not narrative faithfulness or human approval.
+
+### Engineering
+
+Use Python 3.10+ and install `requirements.txt`. Run
+`python3 -m unittest discover -s tests -v` from the repository root. The suite
+includes public CLI/JSON contracts, rendering behavior, recovery state and AST
+architecture checks; CI runs the same suite. Start with the
+[architecture and ownership map](docs/architecture.md),
+[decisions](docs/architecture-decisions.md),
+[progress](docs/refactor-progress.md) and [task pool](docs/refactor-backlog.md).
 
 ## Production Philosophy
 

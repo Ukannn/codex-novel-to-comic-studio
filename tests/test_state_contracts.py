@@ -10,6 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TOOLS"))
 from novel_to_comic.state import detect_state
+from novel_to_comic.artifacts import read_json
 from test_core_tools import valid_page_script, valid_page_story_plan
 
 
@@ -86,6 +87,28 @@ class StateContracts(unittest.TestCase):
             state = detect_state(root)
             self.assertEqual(state["next_phase"], "complete")
             self.assertEqual(set(state), {"project_root", "completed", "next_phase", "missing"})
+
+    def test_each_document_is_read_once_per_inspection_without_persistent_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chapter = make_chapter(root)
+            with patch("novel_to_comic.validation.read_json", wraps=read_json) as read:
+                self.assertEqual(detect_state(root)["next_phase"], "phase5_bind")
+            self.assertEqual([call.args[0] for call in read.call_args_list], [
+                chapter / "page-story-plan.json", chapter / "page-script.json",
+            ])
+            (chapter / "page-script.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(detect_state(root)["next_phase"], "phase4aa_manga_script")
+
+    def test_unreadable_script_returns_repair_phase(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chapter = make_chapter(root)
+            path = chapter / "page-script.json"
+            path.write_bytes(b"\xff")
+            state = detect_state(root)
+            self.assertEqual(state["next_phase"], "phase4aa_manga_script")
+            self.assertIn("needs_fix", state["missing"])
 
 
 if __name__ == "__main__":

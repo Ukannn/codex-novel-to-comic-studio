@@ -8,6 +8,7 @@ from typing import Any
 from PIL import Image, ImageChops
 
 from .artifacts import read_json, write_json
+from .config import DEFAULT_PAGE_SIZE
 
 
 def qc_chapter(
@@ -15,7 +16,7 @@ def qc_chapter(
     page_art_dir: str | Path | None,
     finished_pages_dir: str | Path,
     output_path: str | Path,
-    expected_size: tuple[int, int] = (2480, 3508),
+    expected_size: tuple[int, int] = DEFAULT_PAGE_SIZE,
 ) -> dict[str, Any]:
     """Check finished pages, and fallback art only when explicitly requested.
 

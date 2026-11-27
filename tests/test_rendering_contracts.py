@@ -1,5 +1,8 @@
 """Observable rendering/export contracts, using tiny synthetic page fixtures."""
 
+import contextlib
+import importlib
+import io
 import json
 import sys
 import tempfile
@@ -195,6 +198,77 @@ class RenderingContracts(unittest.TestCase):
         for image in converted:
             with self.assertRaises(ValueError):
                 image.getpixel((0, 0))
+
+
+class RenderingPreferenceContracts(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.preferences = self.root / "preferences.json"
+        data = json.loads((ROOT / "config" / "user-preferences.json").read_text(encoding="utf-8"))
+        data["comic"]["page_size_px"] = {"width": 3000, "height": 4200}
+        data["comic"]["panel_gutter_px"] = 26
+        self.preferences.write_text(json.dumps(data), encoding="utf-8")
+
+    def run_cli(self, module_name, worker_name, args, result):
+        module = importlib.import_module(module_name)
+        with patch.object(module, worker_name, return_value=result) as worker:
+            with patch.object(sys, "argv", [module_name + ".py", *args]):
+                with contextlib.redirect_stdout(io.StringIO()) as stdout:
+                    self.assertEqual(module.main(), 0)
+        return worker, json.loads(stdout.getvalue())
+
+    def test_all_rendering_clis_use_selected_preferences(self):
+        cases = [
+            ("compose", "compose_chapter_pages", ["storyboard.json", "--finals", "panels", "--out", "pages"], [], "page_size"),
+            ("letter_chapter", "letter_chapter_pages", ["storyboard.json", "--page-art", "art", "--out", "finished"], [], "page_size"),
+            ("normalize_pages", "normalize_directory", ["pages"], [], "page_size"),
+            ("qc_chapter", "qc_chapter", ["storyboard.json", "--finished-pages", "finished", "--out", "report.json"], {"status": "pass"}, "expected_size"),
+        ]
+        for module, function, args, result, size_key in cases:
+            with self.subTest(module=module):
+                worker, _ = self.run_cli(module, function, [*args, "--preferences", str(self.preferences)], result)
+                self.assertEqual(worker.call_args.kwargs[size_key], (3000, 4200))
+                if module == "compose":
+                    self.assertEqual(worker.call_args.kwargs["gutter"], 26)
+                if module == "qc_chapter":
+                    self.assertIsNone(worker.call_args.args[1])
+            with self.subTest(module=module, override="height"):
+                worker, output = self.run_cli(module, function, [
+                    *args, "--preferences", str(self.preferences), "--height", "5000",
+                ], result)
+                self.assertEqual(worker.call_args.kwargs[size_key], (3000, 5000))
+                if "size" in output:
+                    self.assertEqual(output["size"], [3000, 5000])
+            with self.subTest(module=module, override="legacy-preview"):
+                worker, _ = self.run_cli(module, function, [*args, "--width", "80", "--height", "100"], result)
+                self.assertEqual(worker.call_args.kwargs[size_key], (80, 100))
+
+    def test_explicit_dimension_and_gutter_override_only_selected_values(self):
+        worker, _ = self.run_cli("compose", "compose_chapter_pages", [
+            "storyboard.json", "--finals", "panels", "--out", "pages",
+            "--preferences", str(self.preferences), "--width", "1000", "--gutter", "0",
+        ], [])
+        self.assertEqual(worker.call_args.kwargs["page_size"], (1000, 4200))
+        self.assertEqual(worker.call_args.kwargs["gutter"], 0)
+
+    def test_no_preferences_keeps_legacy_size_and_json_fields(self):
+        worker, result = self.run_cli("normalize_pages", "normalize_directory", ["pages"], [])
+        self.assertEqual(worker.call_args.kwargs["page_size"], (2480, 3508))
+        self.assertEqual(result, {"normalized": 0, "page_dir": "pages", "size": [2480, 3508]})
+
+    def test_invalid_preferences_fail_before_any_image_write(self):
+        self.preferences.write_text("[]", encoding="utf-8")
+        module = importlib.import_module("normalize_pages")
+        with patch.object(module, "normalize_directory") as worker:
+            with patch.object(sys, "argv", ["normalize_pages.py", "pages", "--preferences", str(self.preferences)]):
+                with contextlib.redirect_stderr(io.StringIO()) as stderr:
+                    with self.assertRaises(SystemExit) as caught:
+                        module.main()
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn("error:", stderr.getvalue())
+        worker.assert_not_called()
 
 
 if __name__ == "__main__":

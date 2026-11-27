@@ -9,10 +9,10 @@ from typing import Any, Iterable
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .artifacts import read_json
+from .config import DEFAULT_PAGE_SIZE as A4_PAGE_SIZE
 from .layout import panel_boxes
 
 
-A4_PAGE_SIZE = (2480, 3508)
 DEFAULT_FONT_PATHS = [
     "/System/Library/Fonts/STHeiti Medium.ttc",
     "/System/Library/Fonts/Supplemental/Songti.ttc",

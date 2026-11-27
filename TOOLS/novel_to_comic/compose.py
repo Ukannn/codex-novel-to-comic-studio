@@ -12,10 +12,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from .artifacts import read_json
+from .config import DEFAULT_PAGE_SIZE, DEFAULT_PANEL_GUTTER_PX
 from .layout import panel_boxes
-
-
-DEFAULT_PAGE_SIZE = (2480, 3508)
 
 
 def compose_chapter_pages(
@@ -23,7 +21,7 @@ def compose_chapter_pages(
     finals_dir: str | Path,
     output_dir: str | Path,
     page_size: tuple[int, int] = DEFAULT_PAGE_SIZE,
-    gutter: int = 8,
+    gutter: int = DEFAULT_PANEL_GUTTER_PX,
 ) -> list[Path]:
     storyboard = read_json(storyboard_path)
     finals = Path(finals_dir)

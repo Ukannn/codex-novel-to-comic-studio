@@ -64,16 +64,24 @@ def imported_names(tree, module):
                         yield f"os.{alias.name}"
 
 
-def import_aliases(tree):
+def import_aliases(tree, module):
     aliases = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 local = alias.asname or alias.name.split(".")[0]
                 aliases[local] = alias.name if alias.asname else local
-        elif isinstance(node, ast.ImportFrom) and not node.level:
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                package = PACKAGE + ("." + module.rpartition(".")[0] if "." in module else "")
+                try:
+                    base = importlib.util.resolve_name("." * node.level + base, package)
+                except ImportError:
+                    # The dependency check reports escaping relative imports.
+                    continue
             for alias in node.names:
-                aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+                aliases[alias.asname or alias.name] = f"{base}.{alias.name}"
     return aliases
 
 
@@ -121,7 +129,7 @@ def find_cycle(graph):
 
 def source_violations(source, module, *, cli=False):
     tree = ast.parse(source)
-    aliases = import_aliases(tree)
+    aliases = import_aliases(tree, module)
     parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
     problems = []
     for node in ast.walk(tree):
@@ -273,6 +281,7 @@ class ArchitectureGuardTests(unittest.TestCase):
         self.assertTrue(any("text persistence" in issue for issue in source_violations("target.write_text('partial')", "source")))
         self.assertTrue(any("text persistence" in issue for issue in source_violations("target.write_bytes(b'partial')", "source")))
         self.assertEqual(source_violations("from novel_to_comic import artifacts; artifacts.write_text(path, 'complete')", "source"), [])
+        self.assertEqual(source_violations("from . import artifacts as store; store.write_text(path, 'complete')", "source"), [])
 
     def test_authoritative_defaults_and_retired_helpers_are_enforced(self):
         for source, expected in (

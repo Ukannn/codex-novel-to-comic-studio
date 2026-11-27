@@ -80,6 +80,8 @@
   on Python 3.10, 3.12 and 3.13. Official action tag availability was verified.
 - `e53cca0` extends the persistence rule to text, finishes the module/API map and
   synchronizes English, Chinese and Japanese setup/configuration guidance.
+- Review caught a false positive for relative aliased imports of the canonical
+  text writer; alias resolution was corrected and a positive fixture added.
 - The guard checks syntax and defined dependency policy, not arbitrary semantic
   correctness; independent review is still required.
 

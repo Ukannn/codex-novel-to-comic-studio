@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
+
+from .validation import has_text, page_report, read_document
 
 
 REQUIRED_PLAN_FIELDS = [
@@ -33,10 +34,19 @@ REQUIRED_PAGE_FIELDS = [
 
 def check_page_story_plan(path: str | Path) -> dict[str, Any]:
     plan_path = Path(path)
+    plan, issues = read_document(plan_path, "page story plan")
+    if issues:
+        return page_report(plan_path, {}, issues)
+    return validate_page_story_plan(plan, path=plan_path)
+
+
+def validate_page_story_plan(plan: object, *, path: str | Path = "<memory>") -> dict[str, Any]:
+    """Validate an in-memory plan without reading files or mutating the input."""
+    plan_path = Path(path)
     issues: list[dict[str, str]] = []
-    plan = _read_plan(plan_path, issues)
-    if plan is None:
-        return _result(plan_path, {}, issues)
+    if not isinstance(plan, dict):
+        issues.append({"file": str(plan_path), "issue": "page story plan must be a JSON object"})
+        return page_report(plan_path, {}, issues)
 
     for field in REQUIRED_PLAN_FIELDS:
         if field not in plan:
@@ -71,26 +81,11 @@ def check_page_story_plan(path: str | Path) -> dict[str, Any]:
                 issues.append({"file": str(plan_path), "issue": f"asset gap {index} must be an object"})
                 continue
             for field in ("id", "need", "risk"):
-                if not _has_text(gap.get(field)):
+                if not has_text(gap.get(field)):
                     issues.append({"file": str(plan_path), "issue": f"asset gap {index} missing {field}"})
 
     _check_pages(plan_path, pages, issues)
-    return _result(plan_path, plan, issues)
-
-
-def _read_plan(path: Path, issues: list[dict[str, str]]) -> dict[str, Any] | None:
-    if not path.exists():
-        issues.append({"file": str(path), "issue": "page story plan not found"})
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        issues.append({"file": str(path), "issue": f"invalid JSON: {error.msg}"})
-        return None
-    if not isinstance(data, dict):
-        issues.append({"file": str(path), "issue": "page story plan must be a JSON object"})
-        return None
-    return data
+    return page_report(plan_path, plan, issues)
 
 
 def _check_pages(path: Path, pages: list[Any], issues: list[dict[str, str]]) -> None:
@@ -103,12 +98,12 @@ def _check_pages(path: Path, pages: list[Any], issues: list[dict[str, str]]) -> 
         for field in REQUIRED_PAGE_FIELDS:
             value = page.get(field)
             if field == "beats":
-                if not isinstance(value, list) or not value or not all(_has_text(item) for item in value):
+                if not isinstance(value, list) or not value or not all(has_text(item) for item in value):
                     issues.append({"file": str(path), "issue": f"{page_label} missing useful beats"})
             elif field == "page":
                 if not isinstance(value, int):
                     issues.append({"file": str(path), "issue": f"{page_label} missing numeric page"})
-            elif not _has_text(value):
+            elif not has_text(value):
                 issues.append({"file": str(path), "issue": f"{page_label} missing {field}"})
 
         page_number = page.get("page")
@@ -135,18 +130,3 @@ def _looks_like_vague_summary(value: Any) -> bool:
         "lore montage",
     }
     return normalized in vague_jobs
-
-
-def _has_text(value: Any) -> bool:
-    return isinstance(value, str) and bool(value.strip())
-
-
-def _result(path: Path, plan: dict[str, Any], issues: list[dict[str, str]]) -> dict[str, Any]:
-    pages = plan.get("pages") if isinstance(plan.get("pages"), list) else []
-    return {
-        "path": str(path),
-        "status": "pass" if not issues else "needs_fix",
-        "actual_page_count": len(pages),
-        "declared_page_count": plan.get("actual_page_count"),
-        "issues": issues,
-    }

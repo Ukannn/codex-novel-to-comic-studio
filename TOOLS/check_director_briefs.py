@@ -7,38 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-
-REQUIRED_MARKERS = [
-    "Page purpose",
-    "Source trace",
-    "Reference lock",
-    "Page layout",
-    "Panel directives",
-    "Text directives",
-    "Image2 prompt",
-    "QC checklist",
-    "finished-pages/page-",
-]
-
-
-def check_briefs(root: str | Path) -> dict[str, object]:
-    directory = Path(root)
-    files = sorted(directory.glob("page-*-director-brief.md"))
-    issues: list[dict[str, str]] = []
-    if not files:
-        issues.append({"file": str(directory), "issue": "no director brief files found"})
-    for path in files:
-        text = path.read_text(encoding="utf-8")
-        for marker in REQUIRED_MARKERS:
-            if marker not in text:
-                issues.append({"file": str(path), "issue": f"missing marker: {marker}"})
-        if "visual-bible/characters/" not in text and "No character reference required" not in text:
-            issues.append({"file": str(path), "issue": "missing character reference lock or explicit no-character statement"})
-        if "2x2" in text or "3x2" in text:
-            issues.append({"file": str(path), "issue": "mechanical grid token found; describe manga panel geometry instead"})
-        if "Do not draw text" in text or "no text" in text.lower():
-            issues.append({"file": str(path), "issue": "finished-page brief must include exact readable text, not forbid all text"})
-    return {"briefs": len(files), "issues": issues, "status": "pass" if not issues else "needs_fix"}
+from novel_to_comic.director_briefs import REQUIRED_MARKERS, check_briefs
 
 
 def main() -> int:

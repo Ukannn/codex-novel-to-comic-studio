@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from test_core_tools import valid_page_script, valid_page_story_plan
 
@@ -128,6 +129,49 @@ class PageValidationContractTests(unittest.TestCase):
                     self.assertEqual(completed.stderr, "")
                     self.assertEqual(json.loads(completed.stdout), checker(path))
 
+    def test_pure_validators_match_file_reports_without_io_or_mutation(self):
+        from novel_to_comic.page_script import validate_page_script
+        from novel_to_comic.page_story_plan import validate_page_story_plan
+
+        for name, factory, checker, validator in (
+            ("plan.json", valid_page_story_plan, check_page_story_plan, validate_page_story_plan),
+            ("script.json", valid_page_script, check_page_script, validate_page_script),
+        ):
+            with self.subTest(name=name):
+                document = factory()
+                original = copy.deepcopy(document)
+                path = self.write_document(name, document)
+                expected = checker(path)
+                with patch("novel_to_comic.validation.read_json", side_effect=AssertionError("unexpected file access")):
+                    self.assertEqual(validator(document, path=path), expected)
+                self.assertEqual(document, original)
+
+    def test_pure_validators_reject_non_objects(self):
+        from novel_to_comic.page_script import validate_page_script
+        from novel_to_comic.page_story_plan import validate_page_story_plan
+
+        for validator in (validate_page_script, validate_page_story_plan):
+            for data in (None, True, 42, "draft", [], [None]):
+                with self.subTest(validator=validator.__name__, data=data):
+                    result = validator(data)
+                    self.assertEqual(result["path"], "<memory>")
+                    self.assertEqual(result["status"], "needs_fix")
+                    self.assertIn("must be a JSON object", result["issues"][0]["issue"])
+
+    def test_unreadable_page_documents_produce_issues(self):
+        for name, checker in (("plan.json", check_page_story_plan), ("script.json", check_page_script)):
+            with self.subTest(name=name):
+                path = self.root / name
+                path.write_bytes(b"\xff")
+                report = checker(path)
+                self.assertEqual(report["status"], "needs_fix")
+                self.assertTrue(report["issues"][0]["issue"].startswith("invalid UTF-8:"))
+                path.unlink()
+                path.mkdir()
+                report = checker(path)
+                self.assertEqual(report["status"], "needs_fix")
+                self.assertTrue(report["issues"][0]["issue"].startswith("cannot read "))
+
 
 class DirectorBriefContractTests(unittest.TestCase):
     def setUp(self):
@@ -175,6 +219,30 @@ class DirectorBriefContractTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, expected_exit, completed.stderr)
                 self.assertEqual(completed.stderr, "")
                 self.assertEqual(json.loads(completed.stdout), check_briefs(self.root))
+
+    def test_director_validation_is_available_without_cli_import(self):
+        from novel_to_comic.director_briefs import check_briefs as package_check_briefs
+        from novel_to_comic.director_briefs import validate_director_brief
+
+        self.assertIs(check_briefs, package_check_briefs)
+        self.assertEqual(validate_director_brief(VALID_BRIEF), [])
+        self.assertEqual(validate_director_brief(VALID_BRIEF + "\n2x2", path="draft.md"), [
+            {"file": "draft.md", "issue": "mechanical grid token found; describe manga panel geometry instead"},
+        ])
+
+    def test_unreadable_briefs_produce_issues_and_do_not_hide_other_files(self):
+        invalid = self.root / "page-001-director-brief.md"
+        invalid.write_bytes(b"\xff")
+        directory = self.root / "page-002-director-brief.md"
+        directory.mkdir()
+        valid = self.root / "page-003-director-brief.md"
+        valid.write_text(VALID_BRIEF, encoding="utf-8")
+        report = check_briefs(self.root)
+        self.assertEqual(report["briefs"], 3)
+        self.assertEqual(report["status"], "needs_fix")
+        self.assertEqual([issue["file"] for issue in report["issues"]], [str(invalid), str(directory)])
+        self.assertTrue(report["issues"][0]["issue"].startswith("invalid UTF-8:"))
+        self.assertTrue(report["issues"][1]["issue"].startswith("cannot read director brief:"))
 
 
 if __name__ == "__main__":

@@ -55,6 +55,25 @@ class ArtifactPersistenceTests(unittest.TestCase):
                 write_json(path, {"new": "正文"})
             self.assertEqual(read_json(path), {"new": "正文"})
 
+    def test_failed_stream_creation_releases_descriptor_and_temporary_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "report.json"
+            path.write_bytes(b'{"old": true}')
+            descriptor = None
+
+            def fail_open(fd, *args, **kwargs):
+                nonlocal descriptor
+                descriptor = fd
+                raise OSError("stream allocation failure")
+
+            with patch("novel_to_comic.artifacts.os.fdopen", side_effect=fail_open):
+                with self.assertRaisesRegex(OSError, "stream allocation failure"):
+                    write_json(path, {"new": True})
+            with self.assertRaises(OSError):
+                os.fstat(descriptor)
+            self.assertEqual(read_json(path), {"old": True})
+            self.assertEqual(list(Path(tmp).iterdir()), [path])
+
     def test_existing_permissions_and_symlink_destination_are_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "report.json"

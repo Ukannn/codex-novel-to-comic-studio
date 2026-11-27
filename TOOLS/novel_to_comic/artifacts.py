@@ -36,8 +36,10 @@ def write_json(path: str | Path, data: Any) -> None:
         prefix=f".{target.name}.", suffix=".tmp", dir=target.parent,
     )
     temporary = Path(temporary_name)
+    handle = None
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle = os.fdopen(descriptor, "w", encoding="utf-8")
+        with handle:
             handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
@@ -45,4 +47,6 @@ def write_json(path: str | Path, data: Any) -> None:
             temporary.chmod(mode)
         os.replace(temporary, target)
     finally:
+        if handle is None:
+            os.close(descriptor)
         temporary.unlink(missing_ok=True)

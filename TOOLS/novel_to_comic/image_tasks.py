@@ -6,9 +6,17 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import read_json, write_json
+from .config import ProductionSettings
 
 
-def build_image_tasks(storyboard_path: str | Path, visual_bible_dir: str | Path, chapter_id: str) -> list[dict[str, Any]]:
+def build_image_tasks(
+    storyboard_path: str | Path,
+    visual_bible_dir: str | Path,
+    chapter_id: str,
+    *,
+    settings: ProductionSettings | None = None,
+) -> list[dict[str, Any]]:
+    production = settings if settings is not None else ProductionSettings()
     storyboard_file = Path(storyboard_path)
     visual_root = Path(visual_bible_dir)
     storyboard = read_json(storyboard_file)
@@ -25,12 +33,12 @@ def build_image_tasks(storyboard_path: str | Path, visual_bible_dir: str | Path,
                 "page": page_number,
                 "panel_count": len(panels),
                 "target": f"chapters/{chapter_id}/finished-pages/page-{page_number:03d}.png",
-                "target_size_px": {"width": 2480, "height": 3508},
-                "minimum_short_edge_px": 2048,
-                "trim_size": "A4",
+                "target_size_px": {"width": production.page_size[0], "height": production.page_size[1]},
+                "minimum_short_edge_px": production.minimum_short_edge_px,
+                "trim_size": production.trim_size,
                 "layout": layout,
                 "references": references,
-                "prompt": _prompt_for_page(page, layout),
+                "prompt": _prompt_for_page(page, layout, production),
             }
         )
 
@@ -54,7 +62,7 @@ def _references_for_page(panels: list[dict[str, Any]], visual_root: Path) -> lis
     return references[:10]
 
 
-def _prompt_for_page(page: dict[str, Any], layout: str) -> str:
+def _prompt_for_page(page: dict[str, Any], layout: str, settings: ProductionSettings) -> str:
     panel_lines: list[str] = []
     text_lines: list[str] = []
     for panel in page.get("panels", []):
@@ -79,11 +87,17 @@ def _prompt_for_page(page: dict[str, Any], layout: str) -> str:
 
     joined_panels = " ".join(panel_lines)
     joined_text = " ".join(text_lines) if text_lines else "No required reader text on this page."
+    language = {
+        "zh": "Chinese", "zh-CN": "Chinese", "zh-Hans": "Chinese",
+        "zh-TW": "Traditional Chinese", "zh-Hant": "Traditional Chinese",
+        "en": "English", "ko": "Korean", "ja": "Japanese",
+    }.get(settings.target_language, settings.target_language)
+    width, height = settings.page_size
     return (
-        f"Generate one complete readable finished manga page in A4 portrait, final production target 2480x3508 px or higher, "
-        f"minimum short edge 2048 px. Use the layout intent: {layout}. "
+        f"Generate one complete readable finished manga page in {settings.trim_size} portrait, final production target {width}x{height} px or higher, "
+        f"minimum short edge {settings.minimum_short_edge_px} px. Use the layout intent: {layout}. "
         f"Page content: {joined_panels} "
-        f"Exact Chinese reader text to render cleanly in balloons, captions, and SFX: {joined_text} "
+        f"Exact {language} reader text to render cleanly in balloons, captions, and SFX: {joined_text} "
         "Use supplied references for identity, wardrobe, and setting consistency across all panels on the page. "
         "Keep all text inside safe areas, avoid covering faces, hands, weapons, and key action, and do not add extra random glyphs, signatures, subtitles, or watermarks."
     )

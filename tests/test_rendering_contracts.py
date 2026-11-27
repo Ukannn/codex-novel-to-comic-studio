@@ -158,6 +158,44 @@ class RenderingContracts(unittest.TestCase):
             bind_pages([self.root], self.root / "output", "empty")
         self.assertFalse((self.root / "output").exists())
 
+    def test_binding_releases_loaded_pages_if_a_later_page_cannot_decode(self):
+        self.image(self.root / "pages" / "page-001.png", (20, 30), "red")
+        (self.root / "pages" / "page-002.png").write_bytes(b"not an image")
+        converted = []
+        original_convert = Image.Image.convert
+
+        def record_conversion(image, *args, **kwargs):
+            result = original_convert(image, *args, **kwargs)
+            converted.append(result)
+            return result
+
+        with patch.object(Image.Image, "convert", record_conversion):
+            with self.assertRaises(OSError):
+                bind_pages([self.root / "pages"], self.root / "output", "broken")
+        self.assertTrue(converted)
+        for image in converted:
+            with self.assertRaises(ValueError):
+                image.getpixel((0, 0))
+
+    def test_binding_releases_loaded_pages_if_pdf_writing_fails(self):
+        self.image(self.root / "pages" / "page-001.png", (20, 30), "red")
+        converted = []
+        original_convert = Image.Image.convert
+
+        def record_conversion(image, *args, **kwargs):
+            result = original_convert(image, *args, **kwargs)
+            converted.append(result)
+            return result
+
+        with patch.object(Image.Image, "convert", record_conversion):
+            with patch.object(Image.Image, "save", side_effect=OSError("disk full")):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    bind_pages([self.root / "pages"], self.root / "output", "broken")
+        self.assertTrue(converted)
+        for image in converted:
+            with self.assertRaises(ValueError):
+                image.getpixel((0, 0))
+
 
 if __name__ == "__main__":
     unittest.main()

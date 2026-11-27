@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 import zipfile
 
@@ -35,14 +36,17 @@ def _collect_pages(page_dirs: list[str | Path]) -> list[Path]:
 
 
 def _write_pdf(pages: list[Path], pdf_path: Path) -> None:
-    images: list[Image.Image] = []
-    for page in pages:
-        with Image.open(page) as image:
-            images.append(image.convert("RGB").copy())
-    first, rest = images[0], images[1:]
-    first.save(pdf_path, save_all=True, append_images=rest)
-    for image in images:
-        image.close()
+    # Converted pages own pixel buffers independently of the source files.
+    # Release every one even if a later page cannot decode or PDF writing fails.
+    with ExitStack() as resources:
+        images: list[Image.Image] = []
+        for page in pages:
+            with Image.open(page) as image:
+                converted = image.convert("RGB")
+                resources.callback(converted.close)
+                images.append(converted)
+        first, rest = images[0], images[1:]
+        first.save(pdf_path, save_all=True, append_images=rest)
 
 
 def _write_cbz(pages: list[Path], cbz_path: Path) -> None:

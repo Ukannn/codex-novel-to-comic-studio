@@ -1,4 +1,4 @@
-"""UTF-8 JSON persistence for local production artifacts.
+"""UTF-8 text and JSON persistence for local production artifacts.
 
 Writes replace one complete file atomically. Callers still own artifact schemas,
 error reporting and coordination when several files form a production stage.
@@ -20,13 +20,18 @@ def read_json(path: str | Path) -> Any:
 
 
 def write_json(path: str | Path, data: Any) -> None:
-    """Publish a complete JSON document, leaving an existing file intact on error.
+    """Serialize the canonical JSON format before atomically publishing it."""
+    content = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    write_text(path, content)
+
+
+def write_text(path: str | Path, content: str) -> None:
+    """Publish complete UTF-8 text, leaving an existing file intact on error.
 
     Existing file permissions and symlink destinations are preserved. New files
     use the temporary file's private permissions. The same-directory temporary
     file ensures replacement remains on the destination's filesystem.
     """
-    content = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     target = Path(path)
     if target.is_symlink():
         target = target.resolve()

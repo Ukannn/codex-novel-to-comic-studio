@@ -9,7 +9,7 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 
-from .artifacts import write_json
+from .artifacts import write_json, write_text
 
 
 CHAPTER_HEADING_RE = re.compile(
@@ -148,11 +148,15 @@ def parse_source_file(path: str | Path) -> ParsedSource:
 
 
 def write_parsed_source(parsed: ParsedSource, output_dir: str | Path) -> None:
+    """Publish a fresh ingest's completion signal only after its dependencies.
+
+    Each file is replaced atomically; this is not a transaction across an
+    existing ingest's files. ``novel.txt`` remains the recovery completion signal.
+    """
     target = Path(output_dir)
     chapters_dir = target / "chapters"
     chapters_dir.mkdir(parents=True, exist_ok=True)
 
-    (target / "novel.txt").write_text(parsed.full_text, encoding="utf-8")
     manifest = {
         "title": parsed.title,
         "chapter_count": len(parsed.chapters),
@@ -166,11 +170,11 @@ def write_parsed_source(parsed: ParsedSource, output_dir: str | Path) -> None:
             for chapter in parsed.chapters
         ],
     }
-    write_json(target / "manifest.json", manifest)
-
     for chapter in parsed.chapters:
         chapter_content = f"{chapter.title}\n\n{chapter.text.strip()}\n"
-        (chapters_dir / f"ch{chapter.index:03d}.txt").write_text(chapter_content, encoding="utf-8")
+        write_text(chapters_dir / f"ch{chapter.index:03d}.txt", chapter_content)
+    write_json(target / "manifest.json", manifest)
+    write_text(target / "novel.txt", parsed.full_text)
 
 
 def _find_opf_path(archive: zipfile.ZipFile) -> str:

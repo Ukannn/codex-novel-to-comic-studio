@@ -9,10 +9,22 @@ from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "TOOLS"))
-from novel_to_comic.artifacts import read_json, write_json
+from novel_to_comic.artifacts import read_json, write_json, write_text
 
 
 class ArtifactPersistenceTests(unittest.TestCase):
+    def test_raw_text_is_exact_and_failed_replace_preserves_previous_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chapter.txt"
+            original = "中文 / 한국어\nNo added trailing newline"
+            write_text(path, original)
+            self.assertEqual(path.read_bytes(), original.encode("utf-8"))
+            with patch("novel_to_comic.artifacts.os.replace", side_effect=OSError("disk error")):
+                with self.assertRaisesRegex(OSError, "disk error"):
+                    write_text(path, "replacement text")
+            self.assertEqual(path.read_bytes(), original.encode("utf-8"))
+            self.assertEqual(list(Path(tmp).iterdir()), [path])
+
     def test_utf8_format_and_nested_parent_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "nested" / "report.json"

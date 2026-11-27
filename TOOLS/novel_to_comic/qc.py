@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageChops
+
+from .artifacts import read_json, write_json
 
 
 def qc_chapter(
@@ -21,7 +22,7 @@ def qc_chapter(
     Pass ``None`` for ``page_art_dir`` for the normal image2 finished-page
     workflow. Existing callers that supply it retain both image checks.
     """
-    storyboard = json.loads(Path(storyboard_path).read_text(encoding="utf-8"))
+    storyboard = read_json(storyboard_path)
     issues: list[dict[str, Any]] = []
     page_count = len(storyboard.get("pages", []))
     for page in storyboard.get("pages", []):
@@ -52,9 +53,7 @@ def qc_chapter(
         "blocking_open_issues": len(blocking),
         "status": "pass" if not blocking else "needs_fix",
     }
-    target = Path(output_path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json(output_path, report)
     return report
 
 

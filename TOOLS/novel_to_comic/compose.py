@@ -7,11 +7,11 @@ separate panels.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from .artifacts import read_json
 from .layout import panel_boxes
 
 
@@ -25,7 +25,7 @@ def compose_chapter_pages(
     page_size: tuple[int, int] = DEFAULT_PAGE_SIZE,
     gutter: int = 8,
 ) -> list[Path]:
-    storyboard = json.loads(Path(storyboard_path).read_text(encoding="utf-8"))
+    storyboard = read_json(storyboard_path)
     finals = Path(finals_dir)
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)

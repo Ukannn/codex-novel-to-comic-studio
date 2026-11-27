@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import textwrap
 from pathlib import Path
 from typing import Any, Iterable
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+from .artifacts import read_json
 from .layout import panel_boxes
 
 
@@ -58,7 +58,7 @@ def letter_chapter_pages(
     output_dir: str | Path,
     page_size: tuple[int, int] = A4_PAGE_SIZE,
 ) -> list[Path]:
-    storyboard = json.loads(Path(storyboard_path).read_text(encoding="utf-8"))
+    storyboard = read_json(storyboard_path)
     art_root = Path(page_art_dir)
     target_root = Path(output_dir)
     target_root.mkdir(parents=True, exist_ok=True)

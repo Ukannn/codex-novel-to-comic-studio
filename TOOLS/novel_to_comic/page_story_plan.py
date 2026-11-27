@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .validation import has_text, page_report, read_document
+from .validation import has_text, page_report, read_document, validate_page_list
 
 
 REQUIRED_PLAN_FIELDS = [
@@ -55,19 +55,8 @@ def validate_page_story_plan(plan: object, *, path: str | Path = "<memory>") -> 
     if plan.get("page_count_policy") != "story_first_variable":
         issues.append({"file": str(plan_path), "issue": "page_count_policy must be story_first_variable"})
 
-    pages = plan.get("pages")
-    if not isinstance(pages, list) or not pages:
-        issues.append({"file": str(plan_path), "issue": "pages must be a non-empty list"})
-        pages = []
-
-    declared_count = plan.get("actual_page_count")
-    if declared_count != len(pages):
-        issues.append(
-            {
-                "file": str(plan_path),
-                "issue": f"actual_page_count must equal pages length ({declared_count!r} != {len(pages)})",
-            }
-        )
+    pages, page_issues = validate_page_list(plan, plan_path)
+    issues.extend(page_issues)
 
     if not isinstance(plan.get("must_include"), list) or not plan.get("must_include"):
         issues.append({"file": str(plan_path), "issue": "must_include must list source beats that cannot be dropped"})
@@ -101,13 +90,13 @@ def _check_pages(path: Path, pages: list[Any], issues: list[dict[str, str]]) -> 
                 if not isinstance(value, list) or not value or not all(has_text(item) for item in value):
                     issues.append({"file": str(path), "issue": f"{page_label} missing useful beats"})
             elif field == "page":
-                if not isinstance(value, int):
+                if type(value) is not int:
                     issues.append({"file": str(path), "issue": f"{page_label} missing numeric page"})
             elif not has_text(value):
                 issues.append({"file": str(path), "issue": f"{page_label} missing {field}"})
 
         page_number = page.get("page")
-        if isinstance(page_number, int):
+        if type(page_number) is int:
             if page_number in seen_numbers:
                 issues.append({"file": str(path), "issue": f"duplicate page number: {page_number}"})
             seen_numbers.add(page_number)

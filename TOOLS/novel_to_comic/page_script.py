@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .validation import has_text, page_report, read_document
+from .validation import has_text, page_report, read_document, validate_page_list
 
 
 REQUIRED_SCRIPT_FIELDS = [
@@ -64,19 +64,8 @@ def validate_page_script(script: object, *, path: str | Path = "<memory>") -> di
     elif "clarity" not in strategy.lower():
         issues.append({"file": str(script_path), "issue": "script_strategy must prioritize clarity over word count"})
 
-    pages = script.get("pages")
-    if not isinstance(pages, list) or not pages:
-        issues.append({"file": str(script_path), "issue": "pages must be a non-empty list"})
-        pages = []
-
-    declared_count = script.get("actual_page_count")
-    if declared_count != len(pages):
-        issues.append(
-            {
-                "file": str(script_path),
-                "issue": f"actual_page_count must equal pages length ({declared_count!r} != {len(pages)})",
-            }
-        )
+    pages, page_issues = validate_page_list(script, script_path)
+    issues.extend(page_issues)
 
     critical_ids = _critical_ids(script, script_path, issues)
     covered_ids = _check_pages(script_path, pages, issues)
@@ -122,7 +111,7 @@ def _check_pages(path: Path, pages: list[Any], issues: list[dict[str, str]]) -> 
                 issues.append({"file": str(path), "issue": f"{page_label} missing {field}"})
 
         page_number = page.get("page")
-        if not isinstance(page_number, int):
+        if type(page_number) is not int:
             issues.append({"file": str(path), "issue": f"{page_label} missing numeric page"})
         else:
             if page_number in seen_numbers:
@@ -180,7 +169,7 @@ def _check_panels(path: Path, page_label: str, panels: Any, issues: list[dict[st
             continue
         for field in ("panel", "story_function", "visual_brief"):
             if field == "panel":
-                if not isinstance(panel.get(field), int):
+                if type(panel.get(field)) is not int:
                     issues.append({"file": str(path), "issue": f"{page_label} panel {panel_index} missing numeric panel"})
             elif not has_text(panel.get(field)):
                 issues.append({"file": str(path), "issue": f"{page_label} panel {panel_index} missing {field}"})

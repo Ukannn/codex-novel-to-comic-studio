@@ -1,7 +1,7 @@
 """Shared file diagnostics and report envelopes for page documents.
 
-Domain rules stay in the individual validators. This module owns only the
-boundary from JSON files to data and the stable page-validation report shape.
+Document-specific rules stay in their validators. This module owns file
+diagnostics, the common page-count contract, and the stable report shape.
 """
 
 from __future__ import annotations
@@ -34,6 +34,24 @@ def read_document(path: Path, kind: str) -> tuple[Any, list[Issue]]:
 def has_text(value: Any) -> bool:
     """Whether a required text field contains more than whitespace."""
     return isinstance(value, str) and bool(value.strip())
+
+
+def validate_page_list(document: dict[str, Any], path: Path) -> tuple[list[Any], list[Issue]]:
+    """Require an ordered, nonempty page list and an exact integer count."""
+    issues: list[Issue] = []
+    pages = document.get("pages")
+    if not isinstance(pages, list) or not pages:
+        issues.append({"file": str(path), "issue": "pages must be a non-empty list"})
+        pages = []
+    declared_count = document.get("actual_page_count")
+    if type(declared_count) is not int:
+        issues.append({"file": str(path), "issue": "actual_page_count must be an integer"})
+    if declared_count != len(pages):
+        issues.append({
+            "file": str(path),
+            "issue": f"actual_page_count must equal pages length ({declared_count!r} != {len(pages)})",
+        })
+    return pages, issues
 
 
 def page_report(path: Path, document: dict[str, Any], issues: list[Issue], **counts: int) -> dict[str, Any]:

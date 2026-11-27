@@ -172,6 +172,45 @@ class PageValidationContractTests(unittest.TestCase):
                 self.assertEqual(report["status"], "needs_fix")
                 self.assertTrue(report["issues"][0]["issue"].startswith("cannot read "))
 
+    def test_page_counts_and_ids_require_integers_without_coercion(self):
+        from novel_to_comic.page_script import validate_page_script
+        from novel_to_comic.page_story_plan import validate_page_story_plan
+
+        for factory, validator in (
+            (valid_page_story_plan, validate_page_story_plan),
+            (valid_page_script, validate_page_script),
+        ):
+            document = factory()
+            document["pages"] = document["pages"][:1]
+            document["actual_page_count"] = 1
+            if "critical_information" in document:
+                document["critical_information"] = document["critical_information"][:1]
+            self.assertEqual(validator(document)["status"], "pass")
+            for value in (True, 1.0, "1"):
+                for field in ("actual_page_count", "page"):
+                    with self.subTest(validator=validator.__name__, field=field, value=value):
+                        malformed = copy.deepcopy(document)
+                        if field == "page":
+                            malformed["pages"][0][field] = value
+                            expected = "page 1 missing numeric page"
+                        else:
+                            malformed[field] = value
+                            expected = "actual_page_count must be an integer"
+                        result = validator(malformed)
+                        self.assertEqual(result["status"], "needs_fix")
+                        self.assertIn(expected, [issue["issue"] for issue in result["issues"]])
+
+    def test_script_panel_ids_require_integers_without_coercion(self):
+        from novel_to_comic.page_script import validate_page_script
+
+        for value in (True, 1.0, "1"):
+            with self.subTest(value=value):
+                document = valid_page_script()
+                document["pages"][0]["panels"][0]["panel"] = value
+                report = validate_page_script(document)
+                self.assertEqual(report["status"], "needs_fix")
+                self.assertIn("page 1 panel 1 missing numeric panel", [issue["issue"] for issue in report["issues"]])
+
 
 class DirectorBriefContractTests(unittest.TestCase):
     def setUp(self):
